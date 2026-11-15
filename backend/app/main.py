@@ -130,7 +130,19 @@ def create_app(database_url: str | None = None, *, adapter: InvestigationAdapter
     from .real_engine import RealEngineService
     app.state.real_engine = RealEngineService() if mode == "real" else None
     app.state.investigation_adapter = (adapter if adapter is not None else FixtureAdapter()) if mode == "fixture" else None
-    app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"], allow_methods=["GET", "POST", "PATCH"], allow_headers=["Content-Type", "X-MEDNAV-Officer-Key"])
+    cors_origins = [
+        o.strip()
+        for o in os.getenv("MEDNAV_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")
+        if o.strip()
+    ]
+    cors_regex = os.getenv("MEDNAV_CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_origin_regex=cors_regex or None,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Content-Type", "X-MEDNAV-Officer-Key"],
+    )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
